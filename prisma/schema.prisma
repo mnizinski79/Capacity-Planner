@@ -1,0 +1,91 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String             @id @default(cuid())
+  email            String             @unique
+  passwordHash     String
+  name             String
+  role             String             @default("user")
+  baseCapacity     Int                @default(40)
+  teamId           String?
+  team             Team?              @relation(fields: [teamId], references: [id])
+  vacationDays     VacationDay[]
+  capacityOverrides CapacityOverride[]
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+}
+
+model Team {
+  id        String   @id @default(cuid())
+  name      String
+  members   User[]
+  createdAt DateTime @default(now())
+}
+
+model Quarter {
+  id             String        @id @default(cuid())
+  year           Int
+  quarterNumber  Int
+  label          String
+  isActive       Boolean       @default(true)
+  sprints        Sprint[]
+  holidays       Holiday[]
+  vacationDays   VacationDay[]
+  createdAt      DateTime      @default(now())
+
+  @@unique([year, quarterNumber])
+}
+
+model Sprint {
+  id                String             @id @default(cuid())
+  quarterId         String
+  quarter           Quarter            @relation(fields: [quarterId], references: [id], onDelete: Cascade)
+  sprintNumber      Int
+  label             String
+  startDate         DateTime
+  endDate           DateTime
+  capacityOverrides CapacityOverride[]
+  createdAt         DateTime           @default(now())
+
+  @@unique([quarterId, sprintNumber])
+}
+
+model Holiday {
+  id        String   @id @default(cuid())
+  quarterId String
+  quarter   Quarter  @relation(fields: [quarterId], references: [id], onDelete: Cascade)
+  date      DateTime
+  label     String
+  createdAt DateTime @default(now())
+}
+
+model VacationDay {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quarterId String
+  quarter   Quarter  @relation(fields: [quarterId], references: [id], onDelete: Cascade)
+  date      DateTime
+  createdAt DateTime @default(now())
+
+  @@unique([userId, date])
+}
+
+model CapacityOverride {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sprintId       String
+  sprint         Sprint   @relation(fields: [sprintId], references: [id], onDelete: Cascade)
+  overridePoints Int
+  createdAt      DateTime @default(now())
+
+  @@unique([userId, sprintId])
+}
