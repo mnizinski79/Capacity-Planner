@@ -14,11 +14,15 @@ import {
   LogOut,
   ChevronDown,
   Shield,
+  KeyRound,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { PasswordInput } from "@/components/password-input"
 import { useState } from "react"
 
 interface NavItem {
@@ -54,6 +58,46 @@ export function NavSidebar({ userName, userRole }: NavSidebarProps) {
     adminNav.some((item) => pathname.startsWith(item.href))
   )
   const isAdmin = userRole === "admin"
+
+  // Change password modal state
+  const [pwOpen, setPwOpen] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [pwError, setPwError] = useState("")
+  const [pwSuccess, setPwSuccess] = useState(false)
+  const [pwSaving, setPwSaving] = useState(false)
+
+  function openPwDialog() {
+    setCurrentPassword("")
+    setNewPassword("")
+    setConfirmPassword("")
+    setPwError("")
+    setPwSuccess(false)
+    setPwOpen(true)
+  }
+
+  async function changePassword() {
+    setPwError("")
+    if (newPassword !== confirmPassword) {
+      setPwError("New passwords do not match")
+      return
+    }
+    setPwSaving(true)
+    const res = await fetch("/api/user/password", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ currentPassword, newPassword }),
+    })
+    setPwSaving(false)
+    if (!res.ok) {
+      const data = await res.json()
+      setPwError(data.error ?? "Failed to update password")
+      return
+    }
+    setPwSuccess(true)
+    setTimeout(() => setPwOpen(false), 1500)
+  }
 
   return (
     <aside className="flex h-full w-60 flex-col border-r bg-background">
@@ -135,6 +179,15 @@ export function NavSidebar({ userName, userRole }: NavSidebarProps) {
             variant="ghost"
             size="icon"
             className="h-8 w-8 shrink-0"
+            onClick={openPwDialog}
+            title="Change password"
+          >
+            <KeyRound className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0"
             onClick={() => signOut({ callbackUrl: "/login" })}
             title="Sign out"
           >
@@ -142,6 +195,54 @@ export function NavSidebar({ userName, userRole }: NavSidebarProps) {
           </Button>
         </div>
       </div>
+
+      {/* Change Password Dialog */}
+      <Dialog open={pwOpen} onOpenChange={setPwOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change Password</DialogTitle>
+          </DialogHeader>
+          {pwSuccess ? (
+            <p className="py-4 text-center text-sm text-green-600 font-medium">Password updated successfully!</p>
+          ) : (
+            <div className="space-y-3 py-2">
+              <div className="space-y-1">
+                <Label>Current Password</Label>
+                <PasswordInput
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="Enter current password"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>New Password</Label>
+                <PasswordInput
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="At least 8 characters"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Confirm New Password</Label>
+                <PasswordInput
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Repeat new password"
+                />
+              </div>
+              {pwError && <p className="text-sm text-destructive">{pwError}</p>}
+            </div>
+          )}
+          {!pwSuccess && (
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setPwOpen(false)}>Cancel</Button>
+              <Button onClick={changePassword} disabled={pwSaving}>
+                {pwSaving ? "Saving…" : "Update Password"}
+              </Button>
+            </DialogFooter>
+          )}
+        </DialogContent>
+      </Dialog>
     </aside>
   )
 }
