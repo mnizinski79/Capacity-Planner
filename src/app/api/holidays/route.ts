@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  const { quarterId, date, label } = await req.json()
+  const { quarterId, date, label, excludesContractors } = await req.json()
   if (!quarterId || !date || !label) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 })
   }
@@ -32,6 +32,7 @@ export async function POST(req: NextRequest) {
       quarterId,
       date: new Date(date + "T00:00:00.000Z"),
       label,
+      excludesContractors: excludesContractors === true,
     },
   })
   return NextResponse.json(holiday, { status: 201 })

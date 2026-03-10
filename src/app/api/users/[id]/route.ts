@@ -24,7 +24,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
   const { id } = await params
-  const { name, email, password, role, baseCapacity, teamId } = await req.json()
+  const { name, email, password, role, isTeamLead, isContractor, baseCapacity, teamId } = await req.json()
 
   // Check email uniqueness if being changed
   if (email !== undefined) {
@@ -39,10 +39,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       ...(email !== undefined && { email }),
       ...(password ? { passwordHash: await bcrypt.hash(password, 12) } : {}),
       ...(role !== undefined && { role }),
+      ...(isTeamLead !== undefined && { isTeamLead }),
+      ...(isContractor !== undefined && { isContractor }),
       ...(baseCapacity !== undefined && { baseCapacity: Number(baseCapacity) }),
       ...(teamId !== undefined && { teamId: teamId || null }),
     },
-    select: { id: true, name: true, email: true, role: true, baseCapacity: true, teamId: true, team: true },
+    select: { id: true, name: true, email: true, role: true, isTeamLead: true, isContractor: true, baseCapacity: true, teamId: true, team: true },
   })
   return NextResponse.json(user)
 }

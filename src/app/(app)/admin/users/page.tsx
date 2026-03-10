@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Edit2, Trash2, Plus } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
 import { PasswordInput } from "@/components/password-input"
 
 interface Team { id: string; name: string }
@@ -18,6 +19,8 @@ interface User {
   name: string
   email: string
   role: string
+  isTeamLead: boolean
+  isContractor: boolean
   baseCapacity: number
   teamId: string | null
   team: { id: string; name: string } | null
@@ -39,16 +42,19 @@ function UserRow({
   const [email, setEmail] = useState(user.email)
   const [password, setPassword] = useState("")
   const [role, setRole] = useState(user.role)
+  const [isTeamLead, setIsTeamLead] = useState(user.isTeamLead)
+  const [isContractor, setIsContractor] = useState(user.isContractor)
   const [base, setBase] = useState(String(user.baseCapacity))
   const [teamId, setTeamId] = useState(user.teamId ?? "__none__")
   const [saving, setSaving] = useState(false)
 
   function openDialog() {
-    // Reset to current values each time dialog opens
     setName(user.name)
     setEmail(user.email)
     setPassword("")
     setRole(user.role)
+    setIsTeamLead(user.isTeamLead)
+    setIsContractor(user.isContractor)
     setBase(String(user.baseCapacity))
     setTeamId(user.teamId ?? "__none__")
     setOpen(true)
@@ -61,6 +67,8 @@ function UserRow({
       email,
       ...(password ? { password } : {}),
       role,
+      isTeamLead,
+      isContractor,
       baseCapacity: Number(base),
       teamId: teamId === "__none__" ? null : teamId,
     })
@@ -75,7 +83,11 @@ function UserRow({
         <TableCell className="font-medium">{user.name}</TableCell>
         <TableCell className="text-muted-foreground text-sm">{user.email}</TableCell>
         <TableCell>
-          <Badge variant={user.role === "admin" ? "default" : "secondary"}>{user.role}</Badge>
+          <div className="flex flex-wrap gap-1">
+            <Badge variant={user.role === "admin" ? "default" : "secondary"}>{user.role}</Badge>
+            {user.isTeamLead && <Badge variant="outline">Team Lead</Badge>}
+            {user.isContractor && <Badge variant="outline">Contractor</Badge>}
+          </div>
         </TableCell>
         <TableCell className="text-center">{user.baseCapacity} pts</TableCell>
         <TableCell>{user.team?.name ?? <span className="italic text-muted-foreground">No team</span>}</TableCell>
@@ -128,6 +140,16 @@ function UserRow({
                 <Input type="number" value={base} onChange={(e) => setBase(e.target.value)} min="0" />
               </div>
             </div>
+            <div className="flex gap-6">
+              <div className="flex items-center gap-2">
+                <Checkbox id="edit-team-lead" checked={isTeamLead} onCheckedChange={(v) => setIsTeamLead(v === true)} />
+                <Label htmlFor="edit-team-lead">Team Lead</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox id="edit-contractor" checked={isContractor} onCheckedChange={(v) => setIsContractor(v === true)} />
+                <Label htmlFor="edit-contractor">Contractor</Label>
+              </div>
+            </div>
             <div className="space-y-1">
               <Label>Team</Label>
               <Select value={teamId} onValueChange={setTeamId}>
@@ -160,6 +182,8 @@ export default function AdminUsersPage() {
   const [newEmail, setNewEmail] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [newRole, setNewRole] = useState("user")
+  const [newIsTeamLead, setNewIsTeamLead] = useState(false)
+  const [newIsContractor, setNewIsContractor] = useState(false)
   const [newBase, setNewBase] = useState("16")
   const [newTeamId, setNewTeamId] = useState("__none__")
   const [adding, setAdding] = useState(false)
@@ -203,6 +227,8 @@ export default function AdminUsersPage() {
         email: newEmail,
         password: newPassword,
         role: newRole,
+        isTeamLead: newIsTeamLead,
+        isContractor: newIsContractor,
         baseCapacity: Number(newBase),
         teamId: newTeamId === "__none__" ? null : newTeamId,
       }),
@@ -215,7 +241,8 @@ export default function AdminUsersPage() {
     }
     setAddOpen(false)
     setNewName(""); setNewEmail(""); setNewPassword("")
-    setNewRole("user"); setNewBase("16"); setNewTeamId("__none__")
+    setNewRole("user"); setNewIsTeamLead(false); setNewIsContractor(false)
+    setNewBase("16"); setNewTeamId("__none__")
     load()
   }
 
@@ -261,6 +288,16 @@ export default function AdminUsersPage() {
                 <div className="space-y-1">
                   <Label>Base Capacity (pts)</Label>
                   <Input type="number" value={newBase} onChange={(e) => setNewBase(e.target.value)} min="0" />
+                </div>
+              </div>
+              <div className="flex gap-6">
+                <div className="flex items-center gap-2">
+                  <Checkbox id="add-team-lead" checked={newIsTeamLead} onCheckedChange={(v) => setNewIsTeamLead(v === true)} />
+                  <Label htmlFor="add-team-lead">Team Lead</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox id="add-contractor" checked={newIsContractor} onCheckedChange={(v) => setNewIsContractor(v === true)} />
+                  <Label htmlFor="add-contractor">Contractor</Label>
                 </div>
               </div>
               <div className="space-y-1">

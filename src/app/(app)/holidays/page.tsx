@@ -13,7 +13,7 @@ function localDate(dateStr: string): Date {
 }
 
 interface Quarter { id: string; label: string; isActive: boolean }
-interface Holiday { id: string; date: string; label: string; quarterId: string }
+interface Holiday { id: string; date: string; label: string; quarterId: string; excludesContractors: boolean }
 
 export default function HolidaysPage() {
   const [quarters, setQuarters] = useState<Quarter[]>([])
@@ -76,9 +76,14 @@ export default function HolidaysPage() {
             {monthHolidays.map((h) => (
               <div key={h.id} className="flex items-center justify-between rounded-md border px-4 py-2">
                 <span className="text-sm font-medium">{h.label}</span>
-                <Badge variant="outline" className="text-xs">
-                  {format(localDate(h.date), "EEE, MMM d")}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  {h.excludesContractors && (
+                    <Badge variant="secondary" className="text-xs">No Contractors</Badge>
+                  )}
+                  <Badge variant="outline" className="text-xs">
+                    {format(localDate(h.date), "EEE, MMM d")}
+                  </Badge>
+                </div>
               </div>
             ))}
           </CardContent>

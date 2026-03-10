@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  const { name, email, password, role, baseCapacity, teamId } = await req.json()
+  const { name, email, password, role, isTeamLead, isContractor, baseCapacity, teamId } = await req.json()
   if (!name || !email || !password) {
     return NextResponse.json({ error: "Name, email, and password are required" }, { status: 400 })
   }
@@ -26,10 +26,12 @@ export async function POST(req: NextRequest) {
       email,
       passwordHash,
       role: role === "admin" ? "admin" : "user",
+      isTeamLead: isTeamLead === true,
+      isContractor: isContractor === true,
       baseCapacity: baseCapacity ? Number(baseCapacity) : 16,
       teamId: teamId || null,
     },
-    select: { id: true, name: true, email: true, role: true, baseCapacity: true, teamId: true, team: { select: { id: true, name: true } } },
+    select: { id: true, name: true, email: true, role: true, isTeamLead: true, isContractor: true, baseCapacity: true, teamId: true, team: { select: { id: true, name: true } } },
   })
 
   return NextResponse.json(user, { status: 201 })
@@ -45,6 +47,8 @@ export async function GET() {
       name: true,
       email: true,
       role: true,
+      isTeamLead: true,
+      isContractor: true,
       baseCapacity: true,
       teamId: true,
       team: { select: { id: true, name: true } },

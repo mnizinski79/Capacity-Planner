@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
 model User {
@@ -13,6 +14,8 @@ model User {
   passwordHash     String
   name             String
   role             String             @default("user")
+  isTeamLead       Boolean            @default(false)
+  isContractor     Boolean            @default(false)
   baseCapacity     Int                @default(40)
   teamId           String?
   team             Team?              @relation(fields: [teamId], references: [id])
@@ -58,12 +61,13 @@ model Sprint {
 }
 
 model Holiday {
-  id        String   @id @default(cuid())
-  quarterId String
-  quarter   Quarter  @relation(fields: [quarterId], references: [id], onDelete: Cascade)
-  date      DateTime
-  label     String
-  createdAt DateTime @default(now())
+  id                  String   @id @default(cuid())
+  quarterId           String
+  quarter             Quarter  @relation(fields: [quarterId], references: [id], onDelete: Cascade)
+  date                DateTime
+  label               String
+  excludesContractors Boolean  @default(false)
+  createdAt           DateTime @default(now())
 }
 
 model VacationDay {

@@ -35,10 +35,11 @@ export async function GET(req: NextRequest) {
     where: { quarterId },
   })
 
-  const holidayDates = quarter.holidays.map((h) => h.date)
-
   const rows = users.map((user) => {
     const userVacation = vacationDays.filter((v) => v.userId === user.id).map((v) => v.date)
+    const holidayDates = quarter.holidays
+      .filter((h) => !h.excludesContractors || !user.isContractor)
+      .map((h) => h.date)
 
     const sprintResults: Record<string, {
       sprintId: string

@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { QuarterSelector } from "@/components/quarter-selector"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Trash2, Edit2, Check, X } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
 
 function localDate(dateStr: string): Date {
   const [y, m, d] = dateStr.slice(0, 10).split("-").map(Number)
@@ -16,7 +17,7 @@ function localDate(dateStr: string): Date {
 }
 
 interface Quarter { id: string; label: string; isActive: boolean; sprints?: { startDate: string; endDate: string }[] }
-interface Holiday { id: string; date: string; label: string; quarterId: string }
+interface Holiday { id: string; date: string; label: string; quarterId: string; excludesContractors: boolean }
 
 export default function AdminHolidaysPage() {
   const [quarters, setQuarters] = useState<Quarter[]>([])
@@ -25,10 +26,12 @@ export default function AdminHolidaysPage() {
   const [loading, setLoading] = useState(false)
   const [newDate, setNewDate] = useState("")
   const [newLabel, setNewLabel] = useState("")
+  const [newExcludesContractors, setNewExcludesContractors] = useState(false)
   const [adding, setAdding] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [editDate, setEditDate] = useState("")
   const [editLabel, setEditLabel] = useState("")
+  const [editExcludesContractors, setEditExcludesContractors] = useState(false)
 
   useEffect(() => {
     fetch("/api/quarters").then((r) => r.json()).then((q) => {
@@ -54,10 +57,11 @@ export default function AdminHolidaysPage() {
     await fetch("/api/holidays", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ quarterId: selectedQuarterId, date: newDate, label: newLabel }),
+      body: JSON.stringify({ quarterId: selectedQuarterId, date: newDate, label: newLabel, excludesContractors: newExcludesContractors }),
     })
     setNewDate("")
     setNewLabel("")
+    setNewExcludesContractors(false)
     setAdding(false)
     loadHolidays()
   }
@@ -66,7 +70,7 @@ export default function AdminHolidaysPage() {
     await fetch(`/api/holidays/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ date: editDate, label: editLabel }),
+      body: JSON.stringify({ date: editDate, label: editLabel, excludesContractors: editExcludesContractors }),
     })
     setEditId(null)
     loadHolidays()
@@ -110,6 +114,16 @@ export default function AdminHolidaysPage() {
               <Plus className="mr-2 h-4 w-4" /> Add
             </Button>
           </div>
+          <div className="mt-3 flex items-center gap-2">
+            <Checkbox
+              id="new-excludes-contractors"
+              checked={newExcludesContractors}
+              onCheckedChange={(v) => setNewExcludesContractors(v === true)}
+            />
+            <Label htmlFor="new-excludes-contractors" className="text-sm font-normal cursor-pointer">
+              Excludes contractors (contractors don&apos;t get capacity deduction for this holiday)
+            </Label>
+          </div>
         </CardContent>
       </Card>
 
@@ -125,11 +139,23 @@ export default function AdminHolidaysPage() {
           )}
           {holidays.map((h) =>
             editId === h.id ? (
-              <div key={h.id} className="flex items-center gap-2 rounded-md border px-4 py-2">
-                <Input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} className="h-7 w-36 text-sm" />
-                <Input value={editLabel} onChange={(e) => setEditLabel(e.target.value)} className="h-7 flex-1 text-sm" />
-                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => saveEdit(h.id)}><Check className="h-3 w-3" /></Button>
-                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditId(null)}><X className="h-3 w-3" /></Button>
+              <div key={h.id} className="rounded-md border px-4 py-2 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} className="h-7 w-36 text-sm" />
+                  <Input value={editLabel} onChange={(e) => setEditLabel(e.target.value)} className="h-7 flex-1 text-sm" />
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => saveEdit(h.id)}><Check className="h-3 w-3" /></Button>
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditId(null)}><X className="h-3 w-3" /></Button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id={`edit-exc-${h.id}`}
+                    checked={editExcludesContractors}
+                    onCheckedChange={(v) => setEditExcludesContractors(v === true)}
+                  />
+                  <Label htmlFor={`edit-exc-${h.id}`} className="text-xs font-normal cursor-pointer text-muted-foreground">
+                    Excludes contractors
+                  </Label>
+                </div>
               </div>
             ) : (
               <div key={h.id} className="flex items-center gap-3 rounded-md border px-4 py-2">
@@ -137,7 +163,10 @@ export default function AdminHolidaysPage() {
                   {format(localDate(h.date), "EEE, MMM d")}
                 </Badge>
                 <span className="flex-1 text-sm font-medium">{h.label}</span>
-                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setEditId(h.id); setEditDate(h.date.slice(0, 10)); setEditLabel(h.label) }}>
+                {h.excludesContractors && (
+                  <Badge variant="secondary" className="text-xs">No Contractors</Badge>
+                )}
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setEditId(h.id); setEditDate(h.date.slice(0, 10)); setEditLabel(h.label); setEditExcludesContractors(h.excludesContractors) }}>
                   <Edit2 className="h-3 w-3" />
                 </Button>
                 <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => deleteHoliday(h.id)}>
