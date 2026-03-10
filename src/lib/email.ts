@@ -72,7 +72,7 @@ export async function sendVacationChangeNotification(payload: VacationChangePayl
 </html>`
 
   try {
-    await resend.emails.send({ from, to: recipients, reply_to: changerEmail, subject, html })
+    await resend.emails.send({ from, to: recipients, replyTo: changerEmail, subject, html })
   } catch (err) {
     console.error("[email] Failed to send vacation change notification:", err)
   }
