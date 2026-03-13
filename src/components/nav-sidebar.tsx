@@ -15,12 +15,19 @@ import {
   ChevronDown,
   Shield,
   KeyRound,
+  MoreHorizontal,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Label } from "@/components/ui/label"
 import { PasswordInput } from "@/components/password-input"
 import { useState } from "react"
@@ -175,24 +182,23 @@ export function NavSidebar({ userName, userRole }: NavSidebarProps) {
             <p className="text-sm font-medium truncate">{userName}</p>
             {isAdmin && <Badge variant="secondary" className="text-xs px-1 py-0">Admin</Badge>}
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 shrink-0"
-            onClick={openPwDialog}
-            title="Change password"
-          >
-            <KeyRound className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 shrink-0"
-            onClick={() => signOut({ callbackUrl: "/login" })}
-            title="Sign out"
-          >
-            <LogOut className="h-4 w-4" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" title="More options">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="top" align="end">
+              <DropdownMenuItem onClick={openPwDialog}>
+                <KeyRound className="mr-2 h-4 w-4" />
+                Change Password
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => signOut({ callbackUrl: "/login" })}>
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 

@@ -49,6 +49,11 @@ export default function VacationPage() {
 
   const loadVacation = useCallback(() => {
     if (!selectedQuarterId) return
+    // Clear the current quarter so the calendar unmounts and remounts fresh
+    // with the correct defaultMonth once the new quarter data arrives
+    setSelectedQuarter(null)
+    setSelectedDates([])
+    setSavedDates([])
     Promise.all([
       fetch(`/api/vacation?quarterId=${selectedQuarterId}`).then((r) => r.json()),
       fetch(`/api/quarters/${selectedQuarterId}`).then((r) => r.json()),
@@ -71,6 +76,7 @@ export default function VacationPage() {
     : undefined
 
   function toggleDate(date: Date) {
+    if (quarterRange && (date < quarterRange.from || date > quarterRange.to)) return
     const day = startOfDay(date)
     setSelectedDates((prev) => {
       const exists = prev.some((d) => isSameDay(d, day))
@@ -142,14 +148,28 @@ export default function VacationPage() {
             <CardDescription>Click dates to toggle vacation days</CardDescription>
           </CardHeader>
           <CardContent>
-            <Calendar
-              mode="multiple"
-              selected={selectedDates}
-              onDayClick={toggleDate}
-              fromDate={quarterRange?.from}
-              toDate={quarterRange?.to}
-              className="rounded-md border p-0"
-            />
+            {quarterRange && (
+              <Calendar
+                key={selectedQuarterId}
+                mode="multiple"
+                selected={selectedDates}
+                onDayClick={toggleDate}
+                fromDate={quarterRange.from}
+                toDate={quarterRange.to}
+                startMonth={quarterRange.from}
+                endMonth={quarterRange.to}
+                defaultMonth={quarterRange.from}
+                disabled={[
+                  { before: quarterRange.from },
+                  { after: quarterRange.to },
+                ]}
+                classNames={{
+                  root: "w-full",
+                  disabled: "text-muted-foreground opacity-50 line-through",
+                }}
+                className="rounded-md border p-0"
+              />
+            )}
           </CardContent>
         </Card>
 
