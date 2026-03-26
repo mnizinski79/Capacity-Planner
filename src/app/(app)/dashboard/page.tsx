@@ -98,7 +98,7 @@ export default async function DashboardPage() {
       new Date(currentSprint.endDate),
       holidayDates,
       vacDates,
-      myOverride?.points ?? undefined
+      myOverride?.overridePoints ?? undefined
     )
     mySprintPoints = result.netCapacity
 
