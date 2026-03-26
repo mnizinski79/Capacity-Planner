@@ -2,34 +2,159 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { CalendarDays, Users, User, Plane, ArrowRight } from "lucide-react"
-import { format } from "date-fns"
+import { Users, Plane, ArrowRight } from "lucide-react"
+import { format, differenceInCalendarDays, isSameDay, isWeekend, eachDayOfInterval } from "date-fns"
+import { calculateNetCapacity, toDateOnly } from "@/lib/capacity"
+import { SprintCalendar } from "@/components/sprint-calendar"
 
 export default async function DashboardPage() {
   const session = await auth()
+  const now = new Date()
 
-  const [quarters, teams, userCount, myVacation] = await Promise.all([
-    prisma.quarter.findMany({
-      where: { isActive: true },
-      include: { sprints: { orderBy: { sprintNumber: "asc" } } },
-      orderBy: [{ year: "desc" }, { quarterNumber: "desc" }],
-      take: 3,
-    }),
-    prisma.team.findMany({ include: { _count: { select: { members: true } } } }),
-    prisma.user.count(),
-    session
-      ? prisma.vacationDay.count({
-          where: {
-            userId: session.user.id,
-            date: { gte: new Date() },
+  const activeQuarter = await prisma.quarter.findFirst({
+    where: { isActive: true },
+    include: {
+      sprints: { orderBy: { sprintNumber: "asc" } },
+      holidays: { orderBy: { date: "asc" } },
+    },
+    orderBy: [{ year: "desc" }, { quarterNumber: "desc" }],
+  })
+
+  const currentSprint = activeQuarter?.sprints.find(
+    (s) => new Date(s.startDate) <= now && now <= new Date(s.endDate)
+  ) ?? null
+
+  // Sprint headline: days left + next milestone
+  const daysLeftInSprint = currentSprint
+    ? Math.max(0, differenceInCalendarDays(toDateOnly(new Date(currentSprint.endDate)), toDateOnly(now)))
+    : null
+
+  const MILESTONE_NOTES: Record<number, string> = {
+    0: "Sprint Start",
+    1: "Deadline to kick off work",
+    2: "Draft Problem statements",
+    5: "Manager review",
+    7: "Product Review",
+    9: "End of sprint",
+  }
+
+  let nextMilestone: string | null = null
+  if (currentSprint) {
+    const sprintDays = eachDayOfInterval({
+      start: toDateOnly(new Date(currentSprint.startDate)),
+      end: toDateOnly(new Date(currentSprint.endDate)),
+    }).filter((d) => !isWeekend(d))
+    const today = toDateOnly(now)
+    for (let i = 0; i < sprintDays.length; i++) {
+      if (sprintDays[i] >= today && MILESTONE_NOTES[i]) {
+        nextMilestone = MILESTONE_NOTES[i]
+        break
+      }
+    }
+  }
+
+  // Card 1: Days left in quarter
+  const lastSprint = activeQuarter?.sprints[activeQuarter.sprints.length - 1]
+  const daysLeftInQuarter = lastSprint
+    ? Math.max(0, differenceInCalendarDays(toDateOnly(new Date(lastSprint.endDate)), toDateOnly(now)))
+    : null
+
+  // Cards 2 & 3: My sprint points + my days off
+  let mySprintPoints: number | null = null
+  let myRemainingSprintPoints: number | null = null
+  let myDaysOff = 0
+  let myNextDayOff: Date | null = null
+
+  if (session && currentSprint && activeQuarter) {
+    const [currentUser, myVacationDays, myOverride] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { baseCapacity: true, isContractor: true },
+      }),
+      prisma.vacationDay.findMany({
+        where: {
+          userId: session.user.id,
+          date: {
+            gte: new Date(currentSprint.startDate),
+            lte: new Date(currentSprint.endDate),
           },
-        })
-      : Promise.resolve(0),
-  ])
+        },
+      }),
+      prisma.capacityOverride.findFirst({
+        where: { userId: session.user.id, sprintId: currentSprint.id },
+      }),
+    ])
 
-  const activeQuarter = quarters[0] ?? null
+    const holidayDates = activeQuarter.holidays
+      .filter((h) => !h.excludesContractors || !currentUser?.isContractor)
+      .map((h) => new Date(h.date))
+
+    const vacDates = myVacationDays.map((v) => new Date(v.date))
+
+    const result = calculateNetCapacity(
+      currentUser?.baseCapacity ?? 40,
+      new Date(currentSprint.startDate),
+      new Date(currentSprint.endDate),
+      holidayDates,
+      vacDates,
+      myOverride?.points ?? undefined
+    )
+    mySprintPoints = result.netCapacity
+
+    // Remaining points: proportional to remaining working days in sprint
+    const allWorkingDays = eachDayOfInterval({
+      start: toDateOnly(new Date(currentSprint.startDate)),
+      end: toDateOnly(new Date(currentSprint.endDate)),
+    }).filter((d) => !isWeekend(d))
+    const todayDate = toDateOnly(now)
+    const remainingWorkingDays = allWorkingDays.filter((d) => d >= todayDate).length
+    if (allWorkingDays.length > 0) {
+      myRemainingSprintPoints = Math.floor(mySprintPoints * remainingWorkingDays / allWorkingDays.length)
+    }
+
+    myDaysOff = result.holidayDays + result.vacationDays
+
+    // Find next upcoming day off (holiday or vacation) in sprint
+    const sprintStart = toDateOnly(new Date(currentSprint.startDate))
+    const sprintEnd = toDateOnly(new Date(currentSprint.endDate))
+    const today = toDateOnly(now)
+
+    const upcomingHolidays = holidayDates.filter((h) => {
+      const d = toDateOnly(h)
+      return d >= today && d >= sprintStart && d <= sprintEnd && !isWeekend(d)
+    })
+    const upcomingVacation = vacDates.filter((v) => {
+      const d = toDateOnly(v)
+      if (d < today || d < sprintStart || d > sprintEnd || isWeekend(d)) return false
+      if (holidayDates.some((h) => isSameDay(toDateOnly(h), d))) return false
+      return true
+    })
+    const allUpcoming = [...upcomingHolidays, ...upcomingVacation].sort(
+      (a, b) => toDateOnly(a).getTime() - toDateOnly(b).getTime()
+    )
+    myNextDayOff = allUpcoming[0] ?? null
+  }
+
+  // Card 4: Team members off this sprint
+  let teamMembersOff: string[] = []
+  let teamOffCount = 0
+  if (currentSprint) {
+    const vacations = await prisma.vacationDay.findMany({
+      where: {
+        date: {
+          gte: new Date(currentSprint.startDate),
+          lte: new Date(currentSprint.endDate),
+        },
+      },
+      include: { user: { select: { name: true } } },
+      distinct: ["userId"],
+    })
+    teamOffCount = vacations.length
+    teamMembersOff = vacations
+      .map((v) => v.user.name)
+      .filter((n): n is string => !!n)
+  }
 
   return (
     <div className="space-y-6 max-w-5xl">
@@ -40,31 +165,61 @@ export default async function DashboardPage() {
 
       {/* Stats cards */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-1"><CalendarDays className="h-3 w-3" /> Active Quarters</CardDescription>
-            <CardTitle className="text-3xl">{quarters.length}</CardTitle>
-          </CardHeader>
+        {/* Days left in quarter */}
+        <Card className="py-0">
+          <CardContent className="p-5">
+            <div>
+              <p className="text-3xl font-bold tracking-tight">{daysLeftInQuarter ?? "—"}</p>
+              <p className="text-sm text-muted-foreground mt-1">Days left in quarter</p>
+              <p className="text-xs text-muted-foreground">{activeQuarter?.label}</p>
+            </div>
+          </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-1"><Users className="h-3 w-3" /> Teams</CardDescription>
-            <CardTitle className="text-3xl">{teams.length}</CardTitle>
-          </CardHeader>
+
+        {/* My remaining sprint points */}
+        <Card className="py-0">
+          <CardContent className="p-5">
+            <div>
+              <p className="text-3xl font-bold tracking-tight">
+                {myRemainingSprintPoints ?? mySprintPoints ?? "—"}
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">Remaining sprint points</p>
+              {currentSprint && mySprintPoints !== null ? (
+                <p className="text-xs text-muted-foreground">{currentSprint.label} total: {mySprintPoints}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">No active sprint</p>
+              )}
+            </div>
+          </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-1"><User className="h-3 w-3" /> Users</CardDescription>
-            <CardTitle className="text-3xl">{userCount}</CardTitle>
-          </CardHeader>
+
+        {/* My days off this sprint */}
+        <Card className="py-0">
+          <CardContent className="p-5">
+            <div>
+              <p className="text-3xl font-bold tracking-tight">{myDaysOff}</p>
+              <p className="text-sm text-muted-foreground mt-1">My days off this sprint</p>
+              {myNextDayOff ? (
+                <p className="text-xs text-muted-foreground">Next: {format(toDateOnly(myNextDayOff), "MMM d")}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">No upcoming days off</p>
+              )}
+            </div>
+          </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-1"><Plane className="h-3 w-3" /> My Upcoming PTO</CardDescription>
-            <CardTitle className="text-3xl">{myVacation}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">days remaining</p>
+
+        {/* Team off this sprint */}
+        <Card className="py-0">
+          <CardContent className="p-5">
+            <div>
+              <p className="text-3xl font-bold tracking-tight">{teamOffCount}</p>
+              <p className="text-sm text-muted-foreground mt-1">Team off this sprint</p>
+              {teamMembersOff.length > 0 ? (
+                <p className="text-xs text-muted-foreground leading-relaxed">{teamMembersOff.join(", ")}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">No one off</p>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -75,33 +230,43 @@ export default async function DashboardPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>{activeQuarter.label}</CardTitle>
-                <CardDescription>{activeQuarter.sprints.length} sprints</CardDescription>
+                <CardTitle>
+                  {daysLeftInSprint !== null && currentSprint
+                    ? `${daysLeftInSprint} days left in ${currentSprint.label}`
+                    : activeQuarter.label}
+                </CardTitle>
+                <CardDescription>
+                  {nextMilestone ? `Next Milestone: ${nextMilestone}` : `${activeQuarter.sprints.length} sprints`}
+                </CardDescription>
               </div>
               <Button variant="outline" size="sm" asChild>
                 <Link href="/my-capacity">View my capacity <ArrowRight className="ml-1 h-3 w-3" /></Link>
               </Button>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-6">
+          <CardContent className="space-y-6">
+            <div className="flex gap-2">
               {activeQuarter.sprints.map((sprint) => {
-                const now = new Date()
                 const isActive = new Date(sprint.startDate) <= now && now <= new Date(sprint.endDate)
                 return (
                   <div
                     key={sprint.id}
-                    className={`rounded-md border p-3 text-center space-y-1 ${isActive ? "border-primary bg-primary/5" : ""}`}
+                    className={`flex-1 min-w-0 rounded-md border p-3 text-center space-y-1 ${isActive ? "border-primary bg-primary/5" : ""}`}
                   >
                     <p className="text-sm font-semibold">{sprint.label}</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground truncate">
                       {format(new Date(sprint.startDate), "MM/dd")} – {format(new Date(sprint.endDate), "MM/dd")}
                     </p>
-                    {isActive && <Badge className="text-xs">Current</Badge>}
                   </div>
                 )
               })}
             </div>
+            {currentSprint && (
+              <SprintCalendar
+                startDate={currentSprint.startDate.toISOString()}
+                endDate={currentSprint.endDate.toISOString()}
+              />
+            )}
           </CardContent>
         </Card>
       )}
