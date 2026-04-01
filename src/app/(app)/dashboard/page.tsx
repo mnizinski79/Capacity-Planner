@@ -67,6 +67,19 @@ export default async function DashboardPage() {
   let myNextDayOff: Date | null = null
 
   if (session && currentSprint && activeQuarter) {
+    // Normalize sprint boundaries to UTC midnight so that vacation days stored
+    // as T00:00:00.000Z are not excluded when sprint dates are stored as local midnight.
+    const sprintStartUTC = new Date(Date.UTC(
+      new Date(currentSprint.startDate).getUTCFullYear(),
+      new Date(currentSprint.startDate).getUTCMonth(),
+      new Date(currentSprint.startDate).getUTCDate(),
+    ))
+    const sprintEndUTC = new Date(Date.UTC(
+      new Date(currentSprint.endDate).getUTCFullYear(),
+      new Date(currentSprint.endDate).getUTCMonth(),
+      new Date(currentSprint.endDate).getUTCDate(),
+    ))
+
     const [currentUser, myVacationDays, myOverride] = await Promise.all([
       prisma.user.findUnique({
         where: { id: session.user.id },
@@ -76,8 +89,8 @@ export default async function DashboardPage() {
         where: {
           userId: session.user.id,
           date: {
-            gte: new Date(currentSprint.startDate),
-            lte: new Date(currentSprint.endDate),
+            gte: sprintStartUTC,
+            lte: sprintEndUTC,
           },
         },
       }),
@@ -140,11 +153,21 @@ export default async function DashboardPage() {
   let teamMembersOff: string[] = []
   let teamOffCount = 0
   if (currentSprint) {
+    const teamSprintStartUTC = new Date(Date.UTC(
+      new Date(currentSprint.startDate).getUTCFullYear(),
+      new Date(currentSprint.startDate).getUTCMonth(),
+      new Date(currentSprint.startDate).getUTCDate(),
+    ))
+    const teamSprintEndUTC = new Date(Date.UTC(
+      new Date(currentSprint.endDate).getUTCFullYear(),
+      new Date(currentSprint.endDate).getUTCMonth(),
+      new Date(currentSprint.endDate).getUTCDate(),
+    ))
     const vacations = await prisma.vacationDay.findMany({
       where: {
         date: {
-          gte: new Date(currentSprint.startDate),
-          lte: new Date(currentSprint.endDate),
+          gte: teamSprintStartUTC,
+          lte: teamSprintEndUTC,
         },
       },
       include: { user: { select: { name: true } } },
