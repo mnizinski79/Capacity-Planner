@@ -1,0 +1,14 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Capacity App",
+      "runtimeExecutable": "/Users/mnizinski/node-v22.14.0-darwin-arm64/bin/node",
+      "runtimeArgs": ["--require", "/Users/mnizinski/Documents/Code Experiments/Capacity App/app/.claude/set-path.cjs", "node_modules/.bin/next", "dev"],
+      "port": 3000,
+      "env": {
+        "PATH": "/Users/mnizinski/node-v22.14.0-darwin-arm64/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+      }
+    }
+  ]
+}
