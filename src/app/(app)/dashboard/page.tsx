@@ -13,7 +13,7 @@ export default async function DashboardPage() {
   const now = new Date()
 
   const activeQuarter = await prisma.quarter.findFirst({
-    where: { isActive: true },
+    where: { status: "ACTIVE" },
     include: {
       sprints: { orderBy: { sprintNumber: "asc" } },
       holidays: { orderBy: { date: "asc" } },
@@ -263,7 +263,7 @@ export default async function DashboardPage() {
                 </CardDescription>
               </div>
               <Button variant="outline" size="sm" asChild>
-                <Link href="/my-capacity">View my capacity <ArrowRight className="ml-1 h-3 w-3" /></Link>
+                <Link href="/capacity">View my capacity <ArrowRight className="ml-1 h-3 w-3" /></Link>
               </Button>
             </div>
           </CardHeader>
@@ -297,7 +297,7 @@ export default async function DashboardPage() {
       {/* Quick links */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Card className="hover:border-primary/50 transition-colors">
-          <Link href="/team-capacity">
+          <Link href="/capacity">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <Users className="h-4 w-4" /> Team Capacity

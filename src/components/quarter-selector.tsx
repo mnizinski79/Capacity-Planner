@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 interface Quarter {
   id: string
   label: string
-  isActive: boolean
+  status: "ACTIVE" | "UPCOMING" | "ARCHIVED"
 }
 
 interface QuarterSelectorProps {
@@ -24,7 +24,8 @@ export function QuarterSelector({ quarters, value, onChange }: QuarterSelectorPr
         {quarters.map((q) => (
           <SelectItem key={q.id} value={q.id}>
             {q.label}
-            {!q.isActive && " (archived)"}
+            {q.status === "UPCOMING" && " (upcoming)"}
+            {q.status === "ARCHIVED" && " (archived)"}
           </SelectItem>
         ))}
       </SelectContent>

@@ -32,12 +32,18 @@ model Team {
   createdAt DateTime @default(now())
 }
 
+enum QuarterStatus {
+  ACTIVE
+  UPCOMING
+  ARCHIVED
+}
+
 model Quarter {
   id             String        @id @default(cuid())
   year           Int
   quarterNumber  Int
   label          String
-  isActive       Boolean       @default(true)
+  status         QuarterStatus @default(UPCOMING)
   sprints        Sprint[]
   holidays       Holiday[]
   vacationDays   VacationDay[]

@@ -24,7 +24,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
   const { id } = await params
   const data = await req.json()
-  const quarter = await prisma.quarter.update({ where: { id }, data: { isActive: data.isActive } })
+  const quarter = await prisma.quarter.update({ where: { id }, data: { status: data.status } })
   return NextResponse.json(quarter)
 }
 

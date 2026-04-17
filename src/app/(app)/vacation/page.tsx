@@ -24,7 +24,7 @@ function toDateStr(d: Date): string {
 interface Quarter {
   id: string
   label: string
-  isActive: boolean
+  status: "ACTIVE" | "UPCOMING" | "ARCHIVED"
   sprints?: { startDate: string; endDate: string }[]
 }
 interface VacationDay { id: string; date: string }
@@ -43,7 +43,7 @@ export default function VacationPage() {
       .then((r) => r.json())
       .then((q: Quarter[]) => {
         setQuarters(q)
-        if (q.length > 0) setSelectedQuarterId((q.find((x: Quarter) => x.isActive) ?? q[0]).id)
+        if (q.length > 0) setSelectedQuarterId((q.find((x: Quarter) => x.status === "ACTIVE") ?? q.find((x: Quarter) => x.status === "UPCOMING") ?? q[0]).id)
       })
   }, [])
 

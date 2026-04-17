@@ -12,7 +12,7 @@ function localDate(dateStr: string): Date {
   return new Date(y, m - 1, d)
 }
 
-interface Quarter { id: string; label: string; isActive: boolean }
+interface Quarter { id: string; label: string; status: "ACTIVE" | "UPCOMING" | "ARCHIVED" }
 interface Holiday { id: string; date: string; label: string; quarterId: string; excludesContractors: boolean }
 
 export default function HolidaysPage() {
@@ -24,7 +24,7 @@ export default function HolidaysPage() {
   useEffect(() => {
     fetch("/api/quarters").then((r) => r.json()).then((q) => {
       setQuarters(q)
-      if (q.length > 0) setSelectedQuarterId((q.find((x: Quarter) => x.isActive) ?? q[0]).id)
+      if (q.length > 0) setSelectedQuarterId((q.find((x: Quarter) => x.status === "ACTIVE") ?? q.find((x: Quarter) => x.status === "UPCOMING") ?? q[0]).id)
     })
   }, [])
 

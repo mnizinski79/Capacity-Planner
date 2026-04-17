@@ -3,7 +3,7 @@
   "configurations": [
     {
       "name": "Capacity App",
-      "runtimeExecutable": "/Users/mnizinski/node-v22.14.0-darwin-arm64/bin/node",
+      "runtimeExecutable": "/opt/homebrew/bin/node",
       "runtimeArgs": ["--require", "/Users/mnizinski/Documents/Code Experiments/Capacity App/app/.claude/set-path.cjs", "node_modules/.bin/next", "dev"],
       "port": 3000,
       "env": {

@@ -96,7 +96,7 @@ async function main() {
         year: 2026,
         quarterNumber: 2,
         label: "2026 Q2",
-        isActive: true,
+        status: "ACTIVE",
         sprints: {
           create: Array.from({ length: 6 }, (_, i) => {
             const sprintStart = addWeeks(qStart, i * 2)

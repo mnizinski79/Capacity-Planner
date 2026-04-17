@@ -6,8 +6,7 @@ import { signOut } from "next-auth/react"
 import {
   LayoutDashboard,
   User,
-  Users,
-  Globe,
+  BarChart2,
   CalendarDays,
   Plane,
   Settings,
@@ -16,6 +15,7 @@ import {
   Shield,
   KeyRound,
   MoreHorizontal,
+  Users,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -40,9 +40,7 @@ interface NavItem {
 
 const mainNav: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
-  { href: "/my-capacity", label: "My Capacity", icon: <User className="h-4 w-4" /> },
-  { href: "/team-capacity", label: "Team Capacity", icon: <Users className="h-4 w-4" /> },
-  { href: "/all-capacity", label: "All Capacity", icon: <Globe className="h-4 w-4" /> },
+  { href: "/capacity", label: "Capacity", icon: <BarChart2 className="h-4 w-4" /> },
   { href: "/holidays", label: "Holidays", icon: <CalendarDays className="h-4 w-4" /> },
   { href: "/vacation", label: "My Vacation", icon: <Plane className="h-4 w-4" /> },
 ]

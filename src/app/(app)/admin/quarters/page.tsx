@@ -19,12 +19,14 @@ interface Sprint {
   sprintNumber: number
 }
 
+type QuarterStatus = "ACTIVE" | "UPCOMING" | "ARCHIVED"
+
 interface Quarter {
   id: string
   label: string
   year: number
   quarterNumber: number
-  isActive: boolean
+  status: QuarterStatus
   sprints: Sprint[]
 }
 
@@ -143,11 +145,11 @@ export default function AdminQuartersPage() {
     load()
   }
 
-  async function toggleActive(q: Quarter) {
+  async function setStatus(q: Quarter, status: QuarterStatus) {
     await fetch(`/api/quarters/${q.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isActive: !q.isActive }),
+      body: JSON.stringify({ status }),
     })
     load()
   }
@@ -231,14 +233,19 @@ export default function AdminQuartersPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <CardTitle className="text-lg">{q.label}</CardTitle>
-                  <Badge variant={q.isActive ? "default" : "secondary"}>
-                    {q.isActive ? "Active" : "Archived"}
+                  <Badge variant={q.status === "ACTIVE" ? "default" : q.status === "UPCOMING" ? "outline" : "secondary"}>
+                    {q.status === "ACTIVE" ? "Active" : q.status === "UPCOMING" ? "Upcoming" : "Archived"}
                   </Badge>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => toggleActive(q)}>
-                    {q.isActive ? "Archive" : "Activate"}
-                  </Button>
+                  <Select value={q.status} onValueChange={(v) => setStatus(q, v as QuarterStatus)}>
+                    <SelectTrigger className="h-8 w-32 text-sm"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ACTIVE">Active</SelectItem>
+                      <SelectItem value="UPCOMING">Upcoming</SelectItem>
+                      <SelectItem value="ARCHIVED">Archived</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <Button
                     variant="outline"
                     size="sm"
